@@ -2,10 +2,8 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 require('dotenv').config()
-const bodyParser = require('body-parser');
-app.use(express.json()); // Used to parse JSON bodies
-app.use(express.urlencoded()); // Parse URL-encoded bodies using query-string library
-// or
+app.use(express.json()); 
+app.use(express.urlencoded());
 app.use(express.urlencoded({ extended: true }));
 const mongo = require('mongodb');
 const mongoose = require('mongoose');
@@ -15,10 +13,10 @@ app.use(express.static('public'))
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 });
-const getUrl=(req)=>{console.log("URL"+req.originalUrl);}
+
 const userSchema = mongoose.Schema({
-  username: String
-});
+  username: String,
+},{ versionKey: false });
 const logSchema = mongoose.Schema({
   username: String,
   _id: String,
@@ -31,7 +29,7 @@ const logSchema = mongoose.Schema({
   }]
 }, { versionKey: false });
 const exerciseSchema = mongoose.Schema({
-  "_id": String,
+  _id: String,
   username: String,
   description: String,
   duration: Number,
@@ -45,7 +43,6 @@ const Log = mongoose.model("Log", logSchema);
 
 
 app.post("/api/users", (req, res) => {
-
   const name = req.body.username;
   User.create({ username: name }, (err, data) => {
     if(err)console.log(err);
@@ -56,7 +53,7 @@ app.post("/api/users", (req, res) => {
           console.log(err);
         }
         res.json(datam);
-        console.log("post users called");
+        // console.log("post users called");
       });
       
     });
@@ -67,7 +64,7 @@ app.post("/api/users/:_id/exercises", (req, res) => {
   const id = req.params._id;
   const desc = req.body.description;
   const dur = parseInt(req.body.duration);
-  const now = new Date();
+  const now = new Date().toDateString();
   const given = req.body.date;
 
   var dat;
@@ -75,10 +72,8 @@ app.post("/api/users/:_id/exercises", (req, res) => {
     dat = now;
   }
   else {
-    dat = new Date(given);
+    dat = new Date(given).toDateString();
   }
-  dat += "";
-  dat = dat.slice(0, 15);
   var name = "";
   User.findOne({ "_id": id }).select("username").exec((err, data) => {
     if (err) {
@@ -96,7 +91,9 @@ app.post("/api/users/:_id/exercises", (req, res) => {
       exe.count++;
       exe.log.push(docs);
       exe.save((err, datame) => {
+        if (err) console.log(err);
         Exercise.findOneAndUpdate({ "_id": id }, { new: true }, (err, data) => {
+          if (err) console.log(err);
           if (data == null) {
             Exercise.create(doc, (err, docum) => {
               if (err) console.log(err);
@@ -117,7 +114,7 @@ app.post("/api/users/:_id/exercises", (req, res) => {
           }
         })
       });
-              console.log("post exercises called");
+              // console.log("post exercises called");
 
     })
   })
@@ -125,55 +122,57 @@ app.post("/api/users/:_id/exercises", (req, res) => {
 
 app.get("/api/users", (req, res) => {
   User.find({}, (err, data) => {
+    if (err) res.json({error:err});
+    else{
     res.json(data);
-            console.log("get users called");
-
+            // console.log("get users called");
+    }
   })
 });
 
-app.get("/api/users/:_id/logs/:from?/:to?/:limit?",(req, res) => {
+app.get("/api/users/:_id/logs",(req, res) => {
   console.log("start tested");
   const id = req.params._id;
-  const dfrom = req.query.from || "";
-  const dto = req.query.to || "";
-  var log = [""];
-  var des, dur, dt;
-  var cnt = 0;
+  var {from,to,limit} = req.query ;
+  console.log(req.query);
   console.log(req.originalUrl);
-  var limit = req.query.limit;
-  Log.findOne({ "_id": id }, (err, dat) => {
-    if (dfrom == "") {
-      limit = req.query.limit;
-      
-      if(limit==null){
-          limit=dat.log.length;
-      }
-      console.log(limit);
-      dat.log=dat.log.slice(0,limit);
-      dat.count=limit;
-      res.json(dat);
-      console.log("over1: "+dat);
-    }
-    else {
+  // Log.findOne({ "_id": id },(err, dat) => {
+  //   if (err){
+  //   console.log(err); 
+  //   res.json({error:"id not found"});
+  //   }
+  //   // if (from == undefined) {     
+  //   //   if(limit==undefined){
+  //   //       limit=dat.log.length;
+  //   //   }
+  //   //   // console.log(limit);
+  //   //   dat.log=dat.log.slice(0,limit);
+  //   //   dat.count=limit;
+  //   //   res.send(dat);
+  //   //   console.log("over1: "+dat);
+  //   // }
+  //   else {
       console.log("else block");
-      const gte = new Date(dfrom);
-      const lt = new Date(dto);
-      console.log(gte + "   " + lt);
-      limit = req.query.limit;
-      Log.findOne({"_id":id, date: { $gte: gte, $lt: lt } }, (err, data) => {
+      const gte = new Date(from) || new Date("1970-01-01");
+      const lt = new Date(to) || new Date();
+      // console.log(gte + "   " + lt);
+      Log.findOne({"_id":id}).where({date: { $gte: gte, $lte: lt } }).exec((err, data) => {
         console.log("into the find");
-        if(limit==null){
-          limit=data.log.length;
-          console.log(limit)
+        if (err){
+        console.log(err); 
+        res.json({error:"no user found"});
         }
-        data.count=limit;
+        if(limit==undefined){
+          limit=data.log.length;
+          console.log(limit);
+        }
         data.log=data.log.slice(0,limit);
-        res.json(data);
+        data.count=data.log.length;
+        res.send(data);
         console.log("over: "+data);
       })
-    }
-  })
-  console.log("hell passed");
+    //}
+  // } )
 })
 
 
