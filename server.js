@@ -2,7 +2,7 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 require('dotenv').config()
-app.use(express.json()); 
+app.use(express.json());
 app.use(express.urlencoded());
 app.use(express.urlencoded({ extended: true }));
 const mongo = require('mongodb');
@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
 
 const userSchema = mongoose.Schema({
   username: String,
-},{ versionKey: false });
+}, { versionKey: false });
 const logSchema = mongoose.Schema({
   username: String,
   _id: String,
@@ -25,7 +25,7 @@ const logSchema = mongoose.Schema({
     description: String,
     duration: Number,
     date: String,
-    _id:false
+    _id: false
   }]
 }, { versionKey: false });
 const exerciseSchema = mongoose.Schema({
@@ -45,9 +45,9 @@ const Log = mongoose.model("Log", logSchema);
 app.post("/api/users", (req, res) => {
   const name = req.body.username;
   User.create({ username: name }, (err, data) => {
-    if(err)console.log(err);
+    if (err) console.log(err);
     data.save((err, datam) => {
-      if(err)console.log(err);
+      if (err) console.log(err);
       Log.create({ "_id": datam._id, username: name, count: 0, log: [] }, (err, datom) => {
         if (err) {
           console.log(err);
@@ -55,7 +55,7 @@ app.post("/api/users", (req, res) => {
         res.json(datam);
         // console.log("post users called");
       });
-      
+
     });
   })
 })
@@ -114,7 +114,7 @@ app.post("/api/users/:_id/exercises", (req, res) => {
           }
         })
       });
-              // console.log("post exercises called");
+      // console.log("post exercises called");
 
     })
   })
@@ -122,57 +122,52 @@ app.post("/api/users/:_id/exercises", (req, res) => {
 
 app.get("/api/users", (req, res) => {
   User.find({}, (err, data) => {
-    if (err) res.json({error:err});
-    else{
-    res.json(data);
-            // console.log("get users called");
+    if (err) res.json({ error: err });
+    else {
+      res.json(data);
+      // console.log("get users called");
     }
   })
 });
 
-app.get("/api/users/:_id/logs",(req, res) => {
+app.get("/api/users/:_id/logs", (req, res) => {
   console.log("start tested");
   const id = req.params._id;
-  var {from,to,limit} = req.query ;
+  var { from, to, limit } = req.query;
   console.log(req.query);
   console.log(req.originalUrl);
-  // Log.findOne({ "_id": id },(err, dat) => {
-  //   if (err){
-  //   console.log(err); 
-  //   res.json({error:"id not found"});
+  console.log("else block");
+  // const gte = new Date(from) || new Date("1970-01-01");
+  // const lt = new Date(to) || new Date();
+  // // console.log(gte + "   " + lt);
+  // Log.findOne({ "_id": id }).where({ date: { $gte: gte, $lte: lt } }).exec((err, data) => {
+  //   console.log("into the find");
+  //   if (err) {
+  //     console.log(err);
+  //     res.json({ error: "no user found" });
   //   }
-  //   // if (from == undefined) {     
-  //   //   if(limit==undefined){
-  //   //       limit=dat.log.length;
-  //   //   }
-  //   //   // console.log(limit);
-  //   //   dat.log=dat.log.slice(0,limit);
-  //   //   dat.count=limit;
-  //   //   res.send(dat);
-  //   //   console.log("over1: "+dat);
-  //   // }
-  //   else {
-      console.log("else block");
-      const gte = new Date(from) || new Date("1970-01-01");
-      const lt = new Date(to) || new Date();
+  //   else{
+  //   if (limit == undefined) {
+  //     limit = data.log.length;
+  //     console.log(limit);
+  //   }
+  //   data.log = data.log.slice(0, limit);
+  //   data.count = data.log.length;
+  //   res.send(data);
+  //   console.log("over: " + data);
+  // }})
+  const gte = from ? new Date(from) : undefined;
+      const lt = to ? new Date(to) : undefined;
       // console.log(gte + "   " + lt);
       Log.findOne({"_id":id}).where({date: { $gte: gte, $lte: lt } }).exec((err, data) => {
         console.log("into the find");
-        if (err){
-        console.log(err); 
-        res.json({error:"no user found"});
-        }
-        if(limit==undefined){
-          limit=data.log.length;
-          console.log(limit);
-        }
+        if (err) console.log(err); 
+       limit = limit || data.log.limit
         data.log=data.log.slice(0,limit);
         data.count=data.log.length;
-        res.send(data);
+        res.json(data);
         console.log("over: "+data);
       })
-    //}
-  // } )
 })
 
 
